@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Колесо Фортуны (Улучшенный)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Цвета для фона сегментов, если нет картинки */
+            --c1: #51a34b; /* 50 Points Gryffindor - Green */
+            --c2: #4a86e8; /* New Wand Beans - Blue */
+            --c3: #cc0000; /* Bertie Bott's x100 - Red */
+            --c4: #6aa84f; /* Fitwick's x100 - Green */
+            --c5: #9900ff; /* Visit to Hogsmeade - Purple */
+            --c6: #ff6600; /* Visit Galleons x100 - Orange */
+            --c7: #0b5394; /* Time-Turner Potion - Dark Blue */
+            --c8: #b45f06; /* Quidditch Tickets - Brown/Orange */
+            --c9: #38761d; /* Hogwarts Art Book - Dark Green */
+            --c10: #a64d79; /* Hogwarts Acceptance - Pink/Purple */
+            --c11: #f1c232; /* Defense Against Req. - Yellow */
+            --c12: #999900; /* Chocolate Frog - Olive */
+            --c13: #2d86a6; /* Felix Felicis Potion - Teal */
+            --c14: #8e7cc3; /* Gringots Galleaders - Light Purple */
+            
+            /* Золотые цвета */
+            --gold-light: #FFD700;
+            --gold-dark: #DAA520;
+            --gold-accent: #B8860B;
+            --wood-dark: #4A2C1B;
+            --wood-light: #7E4B2F;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: url('https://i.imgur.com/your-background-image.jpg') center center / cover no-repeat fixed; /* ЗАМЕНИТЕ НА ВАШ ФОН */
+            background-color: #3f3f3f; /* Цвет на случай, если картинка не загрузится */
+            color: #333;
+            overflow: hidden;
+            position: relative;
+            /* Затемнение фона для лучшей читаемости */
+            &::before {
+                content: '';
+                position: absolute;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.5); /* Более темный фон */
+                z-index: -1;
+            }
+        }
+
+        .wheel-container {
+            position: relative;
+            width: 90vw;
+            height: 90vw;
+            max-width: 550px; /* Немного больше, чем раньше */
+            max-height: 550px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* Добавим тень, чтобы колесо "выступало" из фона */
+            box-shadow: 0 15px 40px rgba(0,0,0,0.7);
+            border-radius: 50%; /* Для тени */
+        }
+
+        /* Указатель (похож на шляпу) */
+        .pointer {
+            position: absolute;
+            top: -30px; /* Расположение над колесом */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 28px solid transparent; /* Шире */
+            border-right: 28px solid transparent;
+            border-bottom: 50px solid #2e241c; /* Более темный коричневый для шляпы */
+            z-index: 20;
+            filter: drop-shadow(0 6px 4px rgba(0,0,0,0.5));
+            /* Воротник шляпы */
+            &::before {
+                content: '';
+                position: absolute;
+                bottom: -50px; /* Нижний край шляпы */
+                left: -35px; /* Шире воротник */
+                width: 70px;
+                height: 10px;
+                background: #2e241c;
+                border-radius: 5px;
+            }
+            /* Золотая застежка (просто имитация) */
+            &::after {
+                content: '';
+                position: absolute;
+                top: 15px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 15px;
+                height: 15px;
+                background: var(--gold-light);
+                border-radius: 50%;
+                border: 2px solid var(--gold-dark);
+                box-shadow: inset 0 0 5px rgba(255,255,255,0.5), 0 0 5px rgba(0,0,0,0.5);
+            }
+        }
+
+        .wheel {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: var(--wood-dark); /* База деревянного колеса */
+            /* Контейнер для всех слоев колеса */
+            box-shadow: 0 0 30px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.3);
+            transition: transform 6s cubic-bezier(0.2, 0.8, 0.3, 1);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Деревянная текстура и золотая рамка */
+        .wheel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background:
+                url('https://i.imgur.com/your-wood-texture.jpg') center center / cover no-repeat, /* ЗАМЕНИТЕ НА ТЕКСТУРУ ДЕРЕВА */
+                linear-gradient(to bottom, var(--wood-dark), var(--wood-light)); /* Градиент, если нет текстуры */
+            border-radius: 50%;
+            z-index: 1; /* Под сегментами, но над фоном */
+            /* Золотая рамка имитируется через border-image или multiple shadows */
+            box-shadow:
+                inset 0 0 0 25px var(--gold-light), /* Широкая внутренняя золотая рамка */
+                inset 0 0 0 30px var(--gold-dark), /* Чуть темнее по краям */
+                inset 0 0 0 32px var(--gold-accent), /* Еще темнее */
+                0 0 0 10px var(--gold-dark); /* Внешняя рамка */
+        }
+        
+        /* Внутренние "спицы" и звезды */
+        .wheel::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 80%, rgba(0,0,0,0.4) 100%); /* Виньетка */
+            border-radius: 50%;
+            z-index: 15; /* Над сегментами, но под центром */
+            /* Звездочки по ободу (пример, можно улучшить) */
+            /* Можно добавить больше элементов через multiple background images или псевдоэлементы */
+        }
+
+
+        /* Контейнер для сегментов (цвета, иконки, текст) */
+        .segments-wrapper {
+            position: absolute;
+            width: calc(100% - 70px); /* Отступ от золотой рамки */
+            height: calc(100% - 70px);
+            border-radius: 50%;
+            overflow: hidden; /* Обрезаем по кругу */
+            z-index: 5; /* Над деревянной основой */
+            background: conic-gradient(
+                var(--c1) 0deg 25.71deg, /* 360 / 14 = 25.71 */
+                var(--c2) 25.71deg 51.42deg,
+                var(--c3) 51.42deg 77.13deg,
+                var(--c4) 77.13deg 102.84deg,
+                var(--c5) 102.84deg 128.55deg,
+                var(--c6) 128.55deg 154.26deg,
+                var(--c7) 154.26deg 180deg,
+                var(--c8) 180deg 205.71deg,
+                var(--c9) 205.71deg 231.42deg,
+                var(--c10) 231.42deg 257.13deg,
+                var(--c11) 257.13deg 282.84deg,
+                var(--c12) 282.84deg 308.55deg,
+                var(--c13) 308.55deg 334.26deg,
+                var(--c14) 334.26deg 360deg
+            );
+        }
+
+        /* Центральный "Снитч" */
+        .center-snitch {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 22%; /* Увеличим размер */
+            height: 22%;
+            min-width: 90px;
+            min-height: 90px;
+            background: var(--gold-light); /* Золото */
+            border-radius: 50%;
+            border: 5px solid var(--gold-dark); /* Темное золото */
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 0 0 15px rgba(255, 215, 0, 0.7);
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* Глаза снитча */
+            &::before, &::after {
+                content: '';
+                position: absolute;
+                width: 15%;
+                height: 15%;
+                background: #333;
+                border-radius: 50%;
+                box-shadow: 0 0 5px rgba(0,0,0,0.8);
+            }
+            &::before { left: 28%; }
+            &::after { right: 28%; }
+            /* Крылья (пример, можно сделать сложнее) */
+            .wing-left, .wing-right {
+                position: absolute;
+                width: 100px; /* Ширина крыла */
+                height: 30px; /* Высота крыла */
+                background: var(--gold-light);
+                border-radius: 50% 10% 50% 10% / 50% 10% 50% 10%; /* Округлость */
+                box-shadow: 0 0 10px rgba(0,0,0,0.3);
+                z-index: 9; /* За снитчем */
+            }
+            .wing-left {
+                left: -70px;
+                transform: rotate(-10deg);
+            }
+            .wing-right {
+                right: -70px;
+                transform: rotate(10deg);
+            }
+        }
+
+
+        /* Контейнер для приза */
+        .prize {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            /* Поворачиваем "линию" приза к середине сегмента */
+            transform: rotate(calc(25.71deg * var(--i) + 12.855deg)); /* 360 / 14 = 25.71, 25.71 / 2 = 12.855 */
+        }
+
+        .prize .content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: absolute;
+            top: 10%; /* Расстояние от центра */
+            left: 50%;
+            transform: translateX(-50%) rotate(90deg); /* Текст пишется наружу */
+            transform-origin: center;
+            width: calc(100% / 2.5); /* Ширина области приза, чтобы не накладывался */
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: clamp(9px, 2.2vw, 13px); /* Адаптивный размер шрифта */
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
+            white-space: normal; /* Разрешаем перенос текста */
+            word-wrap: break-word; /* Для длинных слов */
+            line-height: 1.2;
+            padding-top: 10px;
+        }
+
+        .prize .icon {
+            width: clamp(30px, 6vw, 50px); /* Размер иконки */
+            height: clamp(30px, 6vw, 50px);
+            background-color: rgba(255,255,255,0.2); /* Заглушка, если нет иконки */
+            border-radius: 50%;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.3);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            
+            /* Если есть картинка иконки */
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        /* Примеры иконок (заглушки) - Замените на реальные URL! */
+        .prize[data-prize-id="0"] .icon { background-image: url('https://i.imgur.com/your-gryffindor-icon.png'); background-color: transparent;}
+        .prize[data-prize-id="1"] .icon { background-image: url('https://i.imgur.com/your-wand-icon.png'); background-color: transparent;}
+        .prize[data-prize-id="2"] .icon { background-image: url('https://i.imgur.com/your-beans-icon.png'); background-color: transparent;}
+        .prize[data-prize-id="3"] .icon { background-image: url('https://i.imgur.com/your-potion-icon.png'); background-color: transparent;}
+        /* ... и так далее для всех 14 призов ... */
+
+
+        /* Кнопка вращения */
+        .spin-button {
+            margin-top: 40px;
+            padding: 18px 50px;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            background: #795548; /* Коричневый */
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+            transition: background 0.3s, transform 0.1s, box-shadow 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background-image: linear-gradient(to bottom, #795548, #5D4037); /* Градиент */
+            border: 2px solid var(--gold-dark);
+        }
+
+        .spin-button:disabled {
+            background: #9E9E9E;
+            background-image: linear-gradient(to bottom, #9E9E9E, #616161);
+            cursor: not-allowed;
+            opacity: 0.7;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .spin-button:hover:not(:disabled) {
+            background: #5D4037;
+            background-image: linear-gradient(to bottom, #5D4037, #4E342E);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+        }
+
+        .spin-button:active:not(:disabled) {
+            transform: scale(0.98);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+        }
+
+        /* Модальное окно для результата */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.7); /* Более темный фон */
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            padding: 30px;
+            border: 2px solid var(--gold-accent);
+            border-radius: 15px;
+            width: 85%;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+            animation: fadeIn 0.3s ease-out;
+            background: linear-gradient(to bottom, #fefefe, #e0e0e0); /* Легкий градиент */
+        }
+        
+        .modal-content h2 {
+            margin-top: 0;
+            color: #333;
+            font-size: 28px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .modal-content p {
+            font-size: 20px;
+            color: #555;
+            margin: 25px 0;
+        }
+
+        .close-button {
+            padding: 12px 25px;
+            background: #795548;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: background 0.3s, transform 0.1s;
+            background-image: linear-gradient(to bottom, #795548, #5D4037);
+        }
+
+        .close-button:hover {
+            background: #5D4037;
+            background-image: linear-gradient(to bottom, #5D4037, #4E342E);
+            transform: translateY(-2px);
+        }
+
+        /* --- НОВЫЕ СТИЛИ ДЛЯ GEMINI --- */
+        .gemini-button {
+            padding: 10px 20px;
+            background: linear-gradient(to bottom, #673AB7, #512DA8); /* Фиолетовый градиент */
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            margin-top: 10px;
+            margin-bottom: 15px; /* Отступ от результата */
+            border: 2px solid #D1C4E9;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        .gemini-button:hover:not(:disabled) {
+            background: linear-gradient(to bottom, #512DA8, #673AB7);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+            transform: translateY(-2px);
+        }
+        .gemini-button:disabled {
+            background: #9575CD;
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        .gemini-result {
+            font-size: 16px;
+            color: #4A148C; /* Темно-фиолетовый */
+            margin-top: 15px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(103, 58, 183, 0.05);
+            border-radius: 8px;
+            border: 1px dashed #B39DDB;
+            min-height: 30px; /* Чтобы не "прыгал" при загрузке */
+            line-height: 1.5;
+            transition: all 0.3s;
+            text-align: left; /* Для лучшей читаемости текста */
+        }
+        /* --- КОНЕЦ НОВЫХ СТИЛЕЙ --- */
+
+    </style>
+</head>
+<body>
+
+    <div class="wheel-container">
+        <!-- Указатель --><div class="pointer"></div>
+
+        <!-- Колесо --><div class="wheel" id="wheel">
+            <!-- Обертка для сегментов, чтобы была правильная маска --><div class="segments-wrapper">
+                <!-- 
+                    Список призов, основанный на изображении.
+                    --i - это CSS-переменная для индекса сегмента (0-13)
+                    data-prize-id используется для стилизации иконок
+                --><div class="prize" style="--i: 0;" data-prize-id="0"><div class="content"><div class="icon"></div><span>50 Points for Gryffindor!</span></div></div>
+                <div class="prize" style="--i: 1;" data-prize-id="1"><div class="content"><div class="icon"></div><span>New Wand Beans</span></div></div>
+                <div class="prize" style="--i: 2;" data-prize-id="2"><div class="content"><div class="icon"></div><span>Bertie Bott's x100</span></div></div>
+                <div class="prize" style="--i: 3;" data-prize-id="3"><div class="content"><div class="icon"></div><span>Fitwick's x100</span></div></div>
+                <div class="prize" style="--i: 4;" data-prize-id="4"><div class="content"><div class="icon"></div><span>Visit to Hogsmeade</span></div></div>
+                <div class="prize" style="--i: 5;" data-prize-id="5"><div class="content"><div class="icon"></div><span>Visit Galleons x100</span></div></div>
+                <div class="prize" style="--i: 6;" data-prize-id="6"><div class="content"><div class="icon"></div><span>Time-Turner Potion</span></div></div>
+                <div class="prize" style="--i: 7;" data-prize-id="7"><div class="content"><div class="icon"></div><span>Quidditch Tickets</span></div></div>
+                <div class="prize" style="--i: 8;" data-prize-id="8"><div class="content"><div class="icon"></div><span>Hogwarts Art Book</span></div></div>
+                <div class="prize" style="--i: 9;" data-prize-id="9"><div class="content"><div class="icon"></div><span>Hogwarts Acceptance Letter</span></div></div>
+                <div class="prize" style="--i: 10;" data-prize-id="10"><div class="content"><div class="icon"></div><span>Defense Against Requirement</span></div></div>
+                <div class="prize" style="--i: 11;" data-prize-id="11"><div class="content"><div class="icon"></div><span>Chocolate Frog</span></div></div>
+                <div class="prize" style="--i: 12;" data-prize-id="12"><div class="content"><div class="icon"></div><span>Felix Felicis Potion</span></div></div>
+                <div class="prize" style="--i: 13;" data-prize-id="13"><div class="content"><div class="icon"></div><span>Gringots Galleaders</span></div></div>
+            </div>
+
+            <!-- Центральный Снитч --><div class="center-snitch">
+                <div class="wing-left"></div>
+                <div class="wing-right"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Кнопка Вращения --><button class="spin-button" id="spinButton">Вращать!</button>
+
+    <!-- Модальное окно для результата --><div id="resultModal" class="modal">
+        <div class="modal-content">
+            <h2>Поздравляем!</h2>
+            <p>Вы выиграли: <strong id="prizeResult"></strong></p>
+            
+            <!-- НОВЫЕ ЭЛЕМЕНТЫ GEMINI -->
+            <button class="gemini-button" id="geminiButton">✨ Узнать больше</button>
+            <div class="gemini-result" id="geminiResult"></div>
+            <!-- КОНЕЦ НОВЫХ ЭЛЕМЕНТОВ -->
+
+            <button class="close-button" id="closeModal">Отлично!</button>
+        </div>
+    </div>
+
+    <script>
+        const wheel = document.getElementById('wheel');
+        const segmentsWrapper = document.querySelector('.segments-wrapper'); // Теперь вращаем обертку сегментов
+        const spinButton = document.getElementById('spinButton');
+        const resultModal = document.getElementById('resultModal');
+        const closeModal = document.getElementById('closeModal');
+        const prizeResult = document.getElementById('prizeResult');
+
+        // --- НОВЫЕ ПЕРЕМЕННЫЕ ДЛЯ GEMINI ---
+        const geminiButton = document.getElementById('geminiButton');
+        const geminiResult = document.getElementById('geminiResult');
+        let currentPrizeName = ''; // Храним имя текущего приза
+
+        // API-ключ. Оставьте его пустым, как в инструкции.
+        const apiKey = ""; 
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        // --- КОНЕЦ НОВЫХ ПЕРЕМЕННЫХ ---
+
+
+        // Призы должны соответствовать порядку в HTML
+        const prizes = [
+            '50 Points for Gryffindor!',
+            'New Wand Beans',
+            "Bertie Bott's x100",
+            "Fitwick's x100",
+            'Visit to Hogsmeade',
+            'Visit Galleons x100',
+            'Time-Turner Potion',
+            'Quidditch Tickets',
+            'Hogwarts Art Book',
+            'Hogwarts Acceptance Letter', // Возможно, это "письмо"
+            'Defense Against Requirement', // Возможно, это "комната"
+            'Chocolate Frog',
+            'Felix Felicis Potion',
+            'Gringots Galleaders' // Возможно, это "Галлеоны Гринготса"
+        ];
+
+        let isSpinning = false;
+        let currentRotation = 0;
+        const segmentCount = prizes.length; // Теперь 14 сегментов
+        const segmentAngle = 360 / segmentCount; // 360 / 14 = 25.71...
+        const transitionDuration = 7000; // Немного дольше для большего эффекта
+
+        spinButton.addEventListener('click', () => {
+            if (isSpinning) return;
+            isSpinning = true;
+            spinButton.disabled = true;
+
+            // 1. Вычисляем случайный приз
+            const prizeIndex = Math.floor(Math.random() * segmentCount);
+
+            // 2. Рассчитываем угол остановки
+            const targetAngle = 360 - (segmentAngle * prizeIndex + segmentAngle / 2);
+
+            // 3. Добавляем несколько полных оборотов для анимации
+            const randomSpins = 6 + Math.floor(Math.random() * 4); // 6-9 полных оборотов
+            const totalRotation = (360 * randomSpins) + targetAngle;
+            
+            // 4. Применяем вращение к обертке сегментов
+            currentRotation += totalRotation;
+            segmentsWrapper.style.transition = `transform ${transitionDuration / 1000}s cubic-bezier(0.2, 0.8, 0.3, 1)`;
+            segmentsWrapper.style.transform = `rotate(${currentRotation}deg)`;
+
+
+            // 5. Ждем окончания анимации
+            setTimeout(() => {
+                isSpinning = false;
+                spinButton.disabled = false;
+                
+                // 6. Показываем результат
+                showResult(prizes[prizeIndex]);
+
+                // 7. Сбрасываем `currentRotation`
+                currentRotation = currentRotation % 360;
+                segmentsWrapper.style.transition = 'none'; 
+                segmentsWrapper.style.transform = `rotate(${currentRotation}deg)`;
+                segmentsWrapper.offsetHeight;
+                segmentsWrapper.style.transition = `transform ${transitionDuration / 1000}s cubic-bezier(0.2, 0.8, 0.3, 1)`;
+
+            }, transitionDuration);
+        });
+
+        // --- Логика Модального Окна ---
+        function showResult(prizeName) {
+            prizeResult.textContent = prizeName;
+            
+            // --- СБРОС GEMINI UI ---
+            currentPrizeName = prizeName; // Сохраняем приз для API
+            geminiResult.innerHTML = ''; // Очищаем прошлый результат
+            geminiButton.disabled = false; // Включаем кнопку
+            geminiButton.textContent = '✨ Узнать больше'; // Сбрасываем текст кнопки
+            // --- КОНЕЦ СБРОСА ---
+
+            resultModal.style.display = 'flex';
+        }
+
+        closeModal.addEventListener('click', () => {
+            resultModal.style.display = 'none';
+             // Также сбрасываем Gemini UI при закрытии
+            geminiResult.innerHTML = '';
+            geminiButton.disabled = false;
+            geminiButton.textContent = '✨ Узнать больше';
+        });
+
+        window.addEventListener('click', (event) => {
+            if (event.target == resultModal) {
+                resultModal.style.display = 'none';
+                 // Также сбрасываем Gemini UI при закрытии
+                geminiResult.innerHTML = '';
+                geminiButton.disabled = false;
+                geminiButton.textContent = '✨ Узнать больше';
+            }
+        });
+
+        // --- НОВАЯ ЛОГИКА GEMINI API ---
+
+        /**
+         * Функция-обертка для fetch с логикой повторных попыток (exponential backoff)
+         */
+        async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
+            let lastError;
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    lastError = error;
+                    if (i < retries - 1) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2; // Увеличиваем задержку
+                    }
+                }
+            }
+            throw lastError; // Выбрасываем последнюю ошибку, если все попытки не удались
+        }
+
+        /**
+         * Вызывает Gemini API для получения описания приза
+         */
+        async function generateMagicalDescription(prizeName) {
+            geminiButton.disabled = true;
+            geminiButton.textContent = 'Магия творится...'; // Текст загрузки
+            geminiResult.innerHTML = '';
+
+            // Системная инструкция (промпт) для Gemini
+            const systemPrompt = "Ты — волшебный гид из мира Гарри Поттера. Ты говоришь загадочно, увлекательно и немного помпезно, как профессор Флитвик или Олливандер. Твои ответы должны быть короткими (2-3 предложения) и полными волшебства. Всегда отвечай на русском языке.";
+            
+            // Запрос пользователя
+            const userQuery = `Расскажи мне об этом предмете: '${prizeName}'`;
+
+            const payload = {
+                contents: [{
+                    parts: [{ text: userQuery }]
+                }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+            };
+
+            try {
+                const result = await fetchWithRetry(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    
+                    const text = result.candidates[0].content.parts[0].text;
+                    // Отображаем текст с простой анимацией появления
+                    geminiResult.innerHTML = text.replace(/\n/g, '<br>'); // Заменяем переносы строк на <br>
+                } else {
+                    throw new Error("Не удалось получить волшебное описание.");
+                }
+
+            } catch (error) {
+                console.error("Ошибка при вызове Gemini API:", error);
+                geminiResult.innerHTML = "Упс! Кажется, магия дала сбой. Попробуйте еще раз.";
+            } finally {
+                // Восстанавливаем кнопку, даже если была ошибка
+                geminiButton.disabled = false;
+                geminiButton.textContent = '✨ Узнать больше';
+            }
+        }
+
+        // Назначаем обработчик на новую кнопку
+        geminiButton.addEventListener('click', () => {
+            if (currentPrizeName) {
+                generateMagicalDescription(currentPrizeName);
+            }
+        });
+
+        // --- КОНЕЦ НОВОЙ ЛОГИКИ GEMINI API ---
+
+    </script>
+
+</body>
+</html>
