@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Колесо Фортуны</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        /* Стили для указателя (стрелки) */
+        #pointer {
+            width: 0;
+            height: 0;
+            /* Создаем треугольник, указывающий вниз */
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 30px solid #facc15; /* Ярко-желтый цвет (Tailwind yellow-400) */
+            
+            position: absolute;
+            top: -10px; /* Немного над колесом */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            /* Добавляем тень для объема */
+            filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.4));
+        }
+
+        /* Плавное вращение будет применяться через JS */
+        #wheelCanvas {
+            transition: transform 6s cubic-bezier(0.1, 0.7, 0.2, 1); /* Плавная анимация с замедлением */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans flex items-center justify-center min-h-screen p-4">
+
+    <div class="bg-gray-800 p-6 rounded-2xl shadow-2xl w-full max-w-md">
+        
+        <h1 class="text-3xl font-bold text-center mb-6 text-yellow-400">Колесо Фортуны</h1>
+
+        <div id="canvasContainer" class="relative w-full max-w-[350px] h-[350px] mx-auto mb-6">
+            <div id="pointer"></div>
+            <canvas id="wheelCanvas" width="600" height="600"></canvas>
+        </div>
+
+        <button id="spinButton" class="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-4 px-6 rounded-lg text-xl transition-all duration-200 shadow-lg focus:outline-none focus:ring-4 focus:ring-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed">
+           «Экспекто патронум»
+        </button>
+    </div>
+
+    <div id="resultModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white text-gray-900 p-8 rounded-xl shadow-2xl text-center max-w-sm w-full">
+            <h2 class="text-2xl font-bold mb-4">Поздравляем!</h2>
+            <p id="resultText" class="text-lg mb-6">Вы выиграли: ...</p>
+            <button id="closeModalButton" class="bg-gray-800 text-white py-2 px-6 rounded-lg font-semibold hover:bg-gray-700 transition-all">
+                Закрыть
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- НАСТРОЙКА КОЛЕСА ---
+            // Отредактируйте этот массив, чтобы настроить 22 сектора
+            // 'label': Текст приза
+            // 'color': Фоновый цвет сектора (если текстура не загрузится)
+            // 'icon': (Опционально) URL к иконке приза
+            // 'texture': (Опционально) URL к фоновой текстуре сектора
+            const sectors = [
+                { label: 'Квест 1г', color: '#ff6b6b', icon: 'https://i.ibb.co/RkPVFm3n/image.png', texture: 'https://i.ibb.co/Q7syvFR6/image.png' },
+                { label: 'Кот в мешке', color: '#f06595', icon: 'https://i.ibb.co/XrSKM7yx/cat.png', texture: 'https://i.ibb.co/VWgkSvcQ/texture-red.png'},
+                { label: 'Скидка 800', color: '#cc5de8', icon: 'https://i.ibb.co/Fb2NzBjW/800.png', texture: 'https://i.ibb.co/N21dq5W4/texture-green.png' },
+                { label: 'Скидка 300', color: '#9775fa', icon: 'https://i.ibb.co/8gjDQszN/300.png', texture: 'https://i.ibb.co/v4p6xn6Q/texture-blue.png' },
+                { label: 'Скидка 20%', color: '#748ffc', icon: 'https://i.ibb.co/ymJvw1Nr/20.png', texture: 'https://i.ibb.co/4nb4t1pv/texture-gold.png'},
+                { label: 'Кот в мешке ', color: '#5c7cfa', icon: 'https://i.ibb.co/XrSKM7yx/cat.png', texture: 'https://i.ibb.co/VWgkSvcQ/texture-red.png' },
+                { label: 'Скидка 1000', color: '#4dabf7', icon: 'https://i.ibb.co/ch2N7SV5/1000.png', texture: 'https://i.ibb.co/N21dq5W4/texture-green.png' }, // ИСПРАВЛЕНО: убрана лишняя запятая
+                { label: 'Квест 0.3', color: '#3bc9db', icon: 'https://i.ibb.co/hFVy3fHK/image.png', texture: 'https://i.ibb.co/v4p6xn6Q/texture-blue.png' }, // ИСПРАВЛЕНО: добавлена запятая
+                { label: 'Скидка 300', color: '#38d9a9', icon: 'https://i.ibb.co/8gjDQszN/300.png', texture: 'https://i.ibb.co/4nb4t1pv/texture-gold.png'},
+                { label: 'Кот в мешке ', color: '#69db7c', icon: 'https://i.ibb.co/XrSKM7yx/cat.png', texture: 'https://i.ibb.co/VWgkSvcQ/texture-red.png' },
+                { label: 'Скидка 50%', color: '#94d82d', icon: 'https://i.ibb.co/SDZyCYPg/50.png', texture: 'https://i.ibb.co/N21dq5W4/texture-green.png' },
+                { label: 'Скидка 800', color: '#c0eb75', icon: 'https://i.ibb.co/Fb2NzBjW/800.png', texture: 'https://i.ibb.co/v4p6xn6Q/texture-blue.png' },
+                { label: 'Скидка 300', color: '#fbe457', icon: 'https://i.ibb.co/8gjDQszN/300.png', texture: 'https://i.ibb.co/4nb4t1pv/texture-gold.png'},
+                { label: 'Квест 0.8', color: '#ffd43b', icon: 'https://i.ibb.co/1YJqTww8/0-8.png', texture: 'https://i.ibb.co/Q7syvFR6/image.png' },
+                { label: 'Скидка 1000', color: '#ffa94d', icon: 'https://i.ibb.co/ch2N7SV5/1000.png', texture: 'https://i.ibb.co/VWgkSvcQ/texture-red.png'},
+                { label: 'Кот в мешке ', color: '#ff8c42', icon: 'https://i.ibb.co/XrSKM7yx/cat.png', texture: 'https://i.ibb.co/N21dq5W4/texture-green.png' },
+                { label: 'Квест 0.3', color: '#ff6b6b', icon: 'https://i.ibb.co/hFVy3fHK/image.png', texture: 'https://i.ibb.co/v4p6xn6Q/texture-blue.png' },
+                { label: 'Скидка 50%', color: '#f06595', icon: 'https://i.ibb.co/SDZyCYPg/50.png' , texture: 'https://i.ibb.co/4nb4t1pv/texture-gold.png'},
+                { label: 'Кот в мешке', color: '#cc5de8', icon: 'https://i.ibb.co/XrSKM7yx/cat.png' , texture: 'https://i.ibb.co/VWgkSvcQ/texture-red.png' },
+                { label: 'Скидка 500', color: '#5c7cfa', icon: 'https://i.ibb.co/qYKnFPM7/500.png', texture: 'https://i.ibb.co/N21dq5W4/texture-green.png' }, // ИСПРАВЛЕНО: добавлена запятая
+                { label: 'Квест 0.3', color: '#ff6b6b', icon: 'https://i.ibb.co/hFVy3fHK/image.png', texture: 'https://i.ibb.co/v4p6xn6Q/texture-blue.png' },
+                { label: 'Скидка 500', color: '#cc5de8', icon: 'https://i.ibb.co/qYKnFPM7/500.png', texture: 'https://i.ibb.co/4nb4t1pv/texture-gold.png'}, // ИСПРАВЛЕНО: убраны лишние запятые
+            ];
+            // --- КОНЕЦ НАСТРОЙКИ ---
+
+            const canvas = document.getElementById('wheelCanvas');
+            const ctx = canvas.getContext('2d');
+            const spinButton = document.getElementById('spinButton');
+            const resultModal = document.getElementById('resultModal');
+            const resultText = document.getElementById('resultText');
+            const closeModalButton = document.getElementById('closeModalButton');
+
+            const numSectors = sectors.length;
+            const arcSize = (2 * Math.PI) / numSectors;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = canvas.width / 2 - 10; // Радиус с небольшим отступом
+
+            let isSpinning = false;
+            let currentRotation = 0; // Текущий угол поворота колеса
+
+            // Инициализация Telegram Web App
+            try {
+                window.Telegram.WebApp.ready();
+            } catch (e) {
+                console.error("Telegram WebApp API не найдена.", e);
+            }
+
+            // Функция предзагрузки изображений (иконок и текстур)
+            function loadImages() {
+                const promises = [];
+                sectors.forEach(sector => {
+                    // Загружаем иконки
+                    if (sector.icon) {
+                        promises.push(new Promise(resolve => {
+                            const img = new Image();
+                            sector.iconImg = img;
+                            img.onload = resolve;
+                            img.onerror = resolve; // Продолжаем, даже если иконка не загрузилась
+                            img.src = sector.icon;
+                        }));
+                    }
+                    // Загружаем текстуры
+                    if (sector.texture) {
+                        promises.push(new Promise(resolve => {
+                            const img = new Image();
+                            sector.textureImg = img;
+                            img.onload = resolve;
+                            img.onerror = resolve; // Продолжаем, даже если текстура не загрузилась
+                            img.src = sector.texture;
+                        }));
+                    }
+                });
+                return Promise.all(promises);
+            }
+
+            // Функция отрисовки колеса
+            function drawWheel() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = '#ffffff40'; // Цвет обводки секторов
+                ctx.lineWidth = 2;
+
+                for (let i = 0; i < numSectors; i++) {
+                    const sector = sectors[i];
+                    const startAngle = i * arcSize;
+                    const endAngle = (i + 1) * arcSize;
+
+                    // 1. Рисуем сектор (клин)
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY);
+                    ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+                    ctx.closePath();
+                    
+                    // 2. Применяем фоновый цвет
+                    ctx.fillStyle = sector.color;
+                    ctx.fill();
+                    
+                    // 3. Применяем текстуру (если есть и загружена)
+                    if (sector.textureImg && sector.textureImg.complete && sector.textureImg.width > 0) {
+                        try {
+                            const pattern = ctx.createPattern(sector.textureImg, 'repeat');
+                            ctx.fillStyle = pattern;
+                            ctx.fill();
+                        } catch (e) {
+                            console.error("Ошибка создания паттерна:", e);
+                            // Если ошибка (напр. 0x0 изображение), просто используем цвет
+                            ctx.fillStyle = sector.color;
+                            ctx.fill();
+                        }
+                    }
+                    
+                    // 4. Рисуем обводку
+                    ctx.stroke();
+
+                    // 5. Сохраняем контекст, чтобы повернуть его для текста и иконки
+                    ctx.save();
+                    
+                    // Вычисляем угол для поворота
+                    const angle = startAngle + arcSize / 2;
+                    ctx.translate(centerX, centerY); // Перемещаем начало координат в центр
+                    ctx.rotate(angle); // Поворачиваем
+                    
+                    // Рисуем текст
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#FFFFFF'; // Белый текст
+                    ctx.font = 'bold 12px Arial'; // 12px - хороший размер для 22 секторов
+                    ctx.shadowColor = "rgba(0,0,0,0.5)";
+                    ctx.shadowBlur = 3;
+                    // Располагаем текст
+                    ctx.fillText(sector.label, radius * 0.65, 0);
+
+                    // Рисуем иконку (если есть и загружена)
+                    if (sector.iconImg && sector.iconImg.complete && sector.iconImg.width > 0) {
+                        try {
+                            // Располагаем иконку дальше от центра
+                            ctx.drawImage(sector.iconImg, radius * 0.8 - 20, -20, 40, 40);
+                        } catch (e) {
+                            console.error("Ошибка отрисовки иконки:", e);
+                        }
+                    }
+                    
+                    // Восстанавливаем исходный контекст (отменяем поворот и перенос)
+                    ctx.restore();
+                }
+            }
+
+            // Функция вращения
+            function spinWheel() {
+                if (isSpinning) return;
+                isSpinning = true;
+                spinButton.disabled = true;
+
+                // 10 полных оборотов + случайный угол
+                const randomAngle = Math.random() * 360;
+                const spinAmount = 360 * 10 + randomAngle;
+                
+                currentRotation += spinAmount;
+
+                // Применяем вращение через CSS
+                canvas.style.transform = `rotate(${currentRotation}deg)`;
+
+                // Ждем окончания CSS-анимации
+                canvas.addEventListener('transitionend', handleSpinEnd, { once: true });
+            }
+
+            // Обработчик окончания вращения
+            function handleSpinEnd() {
+                isSpinning = false;
+                spinButton.disabled = false;
+
+                // Рассчитываем выигрышный сектор
+                // Указатель находится вверху (270 градусов или -90)
+                const finalAngle = currentRotation % 360;
+                // Нормализуем угол (0 градусов = сектор 0 справа)
+                const normalizedAngle = (360 - finalAngle) % 360;
+                // Угол указателя (вверх = 270)
+                const pointerAngle = 270;
+                const winningAngle = (normalizedAngle + pointerAngle) % 360;
+                
+                const arcSizeDeg = 360 / numSectors;
+                const winningIndex = Math.floor(winningAngle / arcSizeDeg);
+                
+                const winner = sectors[winningIndex];
+
+                // Показываем результат
+                showResult(winner);
+            }
+
+            // Показать модальное окно с результатом
+            function showResult(winner) {
+                resultText.textContent = `Вы выиграли: ${winner.label}!`;
+                resultModal.classList.remove('hidden');
+            }
+
+            // Скрыть модальное окно
+            closeModalButton.onclick = () => {
+                resultModal.classList.add('hidden');
+            };
+
+            // --- Инициализация ---
+            // Сначала загружаем все изображения, потом рисуем колесо
+            spinButton.disabled = true; // Блокируем кнопку на время загрузки
+            loadImages().then(() => {
+                drawWheel();
+                spinButton.disabled = false; // Разблокируем кнопку
+                console.log("Изображения загружены, колесо готово!");
+            }).catch(err => {
+                console.error("Ошибка при загрузке изображений:", err);
+                drawWheel(); // Рисуем колесо в любом случае (с цветами)
+                spinButton.disabled = false;
+            });
+
+            // Назначаем событие на кнопку
+            spinButton.onclick = spinWheel;
+        });
+    </script>
+</body>
+</html>
